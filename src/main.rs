@@ -4,21 +4,13 @@ use std::fs::File;
 
 use pixel_canvas::{Canvas, Color};
 
-#[repr(u8)]
-enum ColorBase {
-    Binary,
-    Decimal,
-    Hexadecimal,
-    Base64,
-}
-
 fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
     let file = File::open(&name)?;
     let data = BufReader::new(file);
     let mut width = 0;
     let mut height = 0;
     let mut pixel_width = 0;
-    let mut color_base = ColorBase::Binary;
+    let mut color_base = 2;
     for (i, line) in data.lines().enumerate() {
         let line = line?;
         match i {
@@ -34,17 +26,12 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
                 }
             }
             1 => {
-                color_base = match line.as_str() {
-                    "2" => ColorBase::Binary,
-                    "10" => ColorBase::Decimal,
-                    "16" => ColorBase::Hexadecimal,
-                    "64" => ColorBase::Base64,
-                    _ => ColorBase::Binary,
-                }
+                color_base = line.parse()?;
             }
             _ => break,
         }
     }
+    println!("{pixel_width}");
     let canvas = Canvas::new(width, height)
         .title(&name);
     canvas.render(move |_, image| {
@@ -56,30 +43,32 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
             if let Some(Ok(v)) = data.next() {
                 let mut c = v.chars();
                 for (_x, px) in row.iter_mut().enumerate() {
-                    let mut color = vec![0; pixel_width];
-                    for v in c.take(pixel_width) {
-                        match &color_base {
-                            Binary => {
-                                match v {
-                                    '1' => color = vec![255, 255, 255],
-                                    _ => {},
-                                }
+                    let mut color: Vec<u8> = vec![0; pixel_width];
+                    if pixel_width == 1 {
+                        if let Some(v) = c.next() {
+                            if let Some(v) = v.to_digit(color_base) {
+                                color[0] = v as u8;
                             }
-                            Decimal => {
+                        }
+                        *px = Color {
+                            r: color[0],
+                            g: color[0],
+                            b: color[0],
+                        };
+                        continue;
+                    }
+                    for i in color.iter_mut() {
+                        if let Some(v) = c.next() {
+                            if let Some(v) = v.to_digit(color_base) {
+                                *i = v as u8;
                             }
-                            _ => unreachable!(),
                         }
                     }
-                    // match pixel_width {
-                    //     1 => {
-                    //
-                    // *px = Color {
-                    //     r: color[0],
-                    //     g: color[1],
-                    //     b: color[2],
-                    // };
-                    //     }
-                    // }
+                    *px = Color {
+                        r: color[0] * 25,
+                        g: color[1] * 25,
+                        b: color[2] * 25,
+                    };
                 }
             }
         }
@@ -89,5 +78,8 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let files: Vec<_> = args().skip(1).map(handle_file).collect();
+    for file in files {
+        file?;
+    }
     Ok(())
 }

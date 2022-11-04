@@ -1,5 +1,5 @@
-res = "100 100 3"
-base = "10"
+res = "100 100"
+base = "10 3"
 data = ""
 for y in range(100):
     for x in range(100):

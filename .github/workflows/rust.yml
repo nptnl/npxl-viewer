@@ -20,14 +20,11 @@ jobs:
       - name: Build
         run: cargo build --all --release && strip target/release/npxl-viewer && mv target/release/npxl-viewer target/release/npxl-viewer_amd64
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload release
+        uses: actions/upload-artifact@v3
         with:
-          files: |
-            target/release/npxl-viewer_amd64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: npxl-viewer-darwin
+          path: target/release/npxl-viewer_amd64
 
   build-win:
     runs-on: windows-latest
@@ -46,13 +43,11 @@ jobs:
       - name: Build
         run: cargo build --all --release
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload release
+        uses: actions/upload-artifact@v3
         with:
-          files: target/release/npxl-viewer.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: npxl-viewer-darwin
+          path: target/release/npxl-viewer.exe
 
   build-mac:
     runs-on: macos-latest
@@ -72,11 +67,8 @@ jobs:
       - name: Build for mac
         run: cargo build --all --release && strip target/release/npxl-viewer && mv target/release/npxl-viewer target/release/npxl-viewer_darwin
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload release
+        uses: actions/upload-artifact@v3
         with:
-          files: |
-            target/release/npxl-viewer_darwin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: npxl-viewer-darwin
+          path: target/release/npxl-viewer_darwin

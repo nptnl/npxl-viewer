@@ -13,7 +13,7 @@ static VERBOSE: AtomicBool = AtomicBool::new(false);
 fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
     let (width, height, pixel_width, color_base) = read_header(&name)?;
     // create a window with the correct width and height
-    let canvas = Canvas::new(width, height).title(&name);
+    let canvas = Canvas::new(width, height).show_ms(true).hidpi(true).title(&name);
     canvas.render(move |_, image| {
         let file = File::open(&name).expect("failed to read file");
         // read the image one line at a time and skip the header
@@ -21,11 +21,12 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
         // Modify the `image` based on your state.
         let width = image.width() as usize;
         let proportion = (255 / color_base) as u8;
+        let mut image_data = Vec::with_capacity(width * height * 3);
         // iterate over the actual image window
-        for (_y, row) in image.chunks_mut(width).enumerate() {
+        for (_y, row) in image.chunks(width).enumerate() {
             if let Some(Ok(v)) = data.next() {
                 let mut c = v.chars();
-                for (_x, px) in row.iter_mut().enumerate() {
+                for (_x, _px) in row.iter().enumerate() {
                     let mut color: Vec<u8> = vec![0; pixel_width];
                     // if it is 1 number per a pixel, we can add the number for all values of each
                     // color and multiply by the proportion so it's not dark
@@ -35,11 +36,11 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
                                 color[0] = v as u8;
                             }
                         }
-                        *px = Color {
+                        image_data.push(Color {
                             r: color[0] * proportion,
                             g: color[0] * proportion,
                             b: color[0] * proportion,
-                        };
+                        });
                         continue;
                     }
                     for i in color.iter_mut() {
@@ -49,14 +50,15 @@ fn handle_file(name: String) -> Result<(), Box<dyn Error>> {
                             }
                         }
                     }
-                    *px = Color {
+                    image_data.push(Color {
                         r: color[0] * proportion,
                         g: color[1] * proportion,
                         b: color[2] * proportion,
-                    };
+                    });
                 }
             }
         }
+        image.copy_from_slice(&image_data);
     });
     Ok(())
 }
@@ -123,7 +125,7 @@ fn to_png<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     // subtract 1
     let proportion = (255 / color_base - 1) as u8;
     // pre reserve the space in memory adding these pixels will take up
-    let mut pixels: Vec<u8> = Vec::with_capacity(width * height * pixel_width);
+    let mut pixels: Vec<u8> = Vec::with_capacity(width * height * 3);
     for line in data {
         let line = line?;
         // to digit takes in the radix (base) of the value we want to convert
@@ -166,6 +168,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     // set verbose flag if it's in arguments
     if args.contains(&String::from("--verbose")) {
         VERBOSE.swap(true, std::sync::atomic::Ordering::Release);
+    }
+    if args.contains(&String::from("--convert")) {
+        for arg in args.iter().skip(1) {
+            if arg == "--verbose" { continue }
+            match to_png(arg) {
+                Ok(_) => {}
+                _ => println!("encountered error while transforming {arg}"),
+            };
+        }
+        std::process::exit(0);
     }
     // if we are in watch mode, then we can have a loop to wait for changes
     // we only care if we modify the image or create a file

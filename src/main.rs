@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 use std::{env::args, error::Error, io::BufReader};
+use std::io::prelude::*;
 
 use notify::{Event, RecursiveMode, Watcher};
 use pixel_canvas::{Canvas, Color};
@@ -102,6 +103,28 @@ fn read_header<P: AsRef<Path>>(path: P) -> Result<(usize, usize, usize, u32), Bo
     Ok((width, height, pixel_width, color_base))
 }
 
+fn build_multi() -> Result<(), Box<dyn Error>> {
+    let mut writeto = File::create("./full.npxl").expect("no header file in this directory!");
+    let mut filenumber: u32 = 0;
+
+    loop {
+        // standard for npxlb outputs is just 3.npxl ... 7.npxl etc
+        // the 0 file contains the header
+        let path = format!("./{filenumber}.npxl");
+        let file = File::open(path.as_str());
+        if let Err(_) = file { break; }
+        // the files used for building dont include headers, they're just straight lines of pixels
+        let data = BufReader::new(file?).lines();
+        let mut linecount: usize = 0;
+        for line in data {
+            writeto.write_all(line?.as_bytes()).expect("cannot write line");
+            writeto.write_all("\n".as_bytes()).expect("cannot slash N");
+        }
+        filenumber += 1;
+    }
+    Ok(())
+}
+
 fn to_png<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     // if the extension is not npxl then we can ignore this file
     if let Some(v) = path.as_ref().extension() {
@@ -179,6 +202,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         std::process::exit(0);
     }
+    if args.contains(&String::from("--build")) {
+        match build_multi() {
+            Ok(_) => {return Ok(())},
+            _ => println!("building error"),
+        };
+    }
     // if we are in watch mode, then we can have a loop to wait for changes
     // we only care if we modify the image or create a file
     if args.contains(&String::from("--watch")) {
@@ -213,5 +242,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     for file in files {
         file?;
     }
+    println!("finish");
     Ok(())
 }

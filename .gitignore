@@ -1,3 +1,5 @@
 /target
 *.png
 *.npxl
+*/.DS_Store
+.DS_Store

@@ -115,7 +115,6 @@ fn build_multi() -> Result<(), Box<dyn Error>> {
         if let Err(_) = file { break; }
         // the files used for building dont include headers, they're just straight lines of pixels
         let data = BufReader::new(file?).lines();
-        let mut linecount: usize = 0;
         for line in data {
             writeto.write_all(line?.as_bytes()).expect("cannot write line");
             writeto.write_all("\n".as_bytes()).expect("cannot slash N");
